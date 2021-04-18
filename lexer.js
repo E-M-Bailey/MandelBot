@@ -1,57 +1,5 @@
-const Actions = require("./actions.js");
-const Mandelbrot = require("./mandelbrot.js");
-
-module.exports = {
-  execute: function(msg) {
-    let lexer = new ArgsLexer(msg);
-    let lexRes = lexer.allTokens();
-    let isErr = lexRes.error !== undefined;
-    //let err = {
-    //  type: "error",
-    //  data: lexRes.error
-    //};
-    let err = Actions.message(lexRes.error, []);
-    let argv = lexRes.tokens;
-    if (argv.length > 0) {
-      switch (argv[0]) {
-        case "!mandelbrot": return isErr ? [err] : Mandelbrot.execute(argv);
-      }
-    }
-    return undefined;
-    console.log("done");
-  }
-};
-
-function parseBoolean(str) {
-  str = String(str).toLowerCase();
-  if (str == "true") {
-    return true;
-  }
-  else if (str == "false") {
-    return false;
-  }
-  else {
-    return undefined;
-  }
-}
-
-//function tempMB(r, i, z, w, h, t, s) {
-//  return {
-//    type: "text",
-//    data: `
-//r = ${r},
-//i = ${i},
-//z = ${z},
-//w = ${w},
-//h = ${h},
-//t = ${t},
-//s = ${s}
-//`
-//  };
-//}
-
 // Subclasses should define a next() method returning the next token or undefined in case of EOF (or throw a string in case of an error).
-class LexerBase {
+class Lexer {
   str
   len
   pos
@@ -129,30 +77,30 @@ class LexerBase {
       error: undefined
     };
   }
-}
 
-class ArgsLexer extends LexerBase {
-
-  constructor(str) {
-    super(str);
-  }
-
-  next() {
-    this.skip(/\s/);
-    if (this.curChar === undefined) {
-      return undefined;
+  // Utility method for parsing booleans case-insensitively
+  parseBoolean(str) {
+    str = String(str).toLowerCase();
+    if (str == "true") {
+      return true;
     }
-    else if (/["']/.test(this.curChar)) {
-      return this.quoted();
+    else if (str == "false") {
+      return false;
     }
     else {
-      return this.unquoted();
+      return undefined;
     }
   }
 
-  // Parses a string delimited by curChar
-  quoted() {
-    let delim = this.advance();
+  // Utility method that parses a string with quotation marks.
+  // precondition: curChar should be the opening quotation mark.
+  // delim, which is the ending quotation mark, should be a regex and defaults to matching only curChar.
+  // extra is the argument passed to escape.
+  quoted(delim, extra) {
+    if (delim === undefined) {
+      delim = new RegExp(curChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    }
+    this.advance();
     let res = "";
     while (this.curChar !== undefined) {
       if (this.curChar == delim) {
@@ -160,25 +108,27 @@ class ArgsLexer extends LexerBase {
         return res;
       }
       else if (this.curChar == "\\") {
-        res += this.escaped();
+        res += this.escape(extra);
       }
       else {
         res += this.advance();
       }
     }
-    throw `No closing ${delim} in argument ${this.tokenIdx}`;
+    throw `No closing quotation mark in argument ${this.tokenIdx}`;
   }
 
-  // Parses a string without delimiters
-  unquoted() {
+  // Utility method that parses a string without quotation marks.
+  // delim, which specifies which characters to end on, should be a regex and defaults to any whitespace.
+  // extra is the argument passed to escape.
+  unquoted(delim = /\s/, extra) {
     let res = "";
     while (this.curChar !== undefined) {
-      if (/\s/.test(this.curChar)) {
+      if (delim.test(this.curChar)) {
         this.advance();
         return res;
       }
       else if (this.curChar == "\\") {
-        res += this.escaped();
+        res += this.escape(extra);
       }
       else {
         res += this.advance();
@@ -187,14 +137,15 @@ class ArgsLexer extends LexerBase {
     return res;
   }
 
-  // Parses a Java-style escape sequence (plus \[whitespace])
-  escaped() {
+  // Utility method that parses a Java-style escape sequence.
+  // extra, which should be a regex, specifies other characters that can be escaped and defaults to any whitespace.
+  escape(extra = /\s/) {
     this.advance();
     if (this.curChar === undefined) {
       throw `Invalid escape sequence \\ in argument ${this.tokenIdx}`;
     }
     let seq = this.advance();
-    if (/\s/.test(seq)) {
+    if (extra.test(seq)) {
       return seq;
     }
     switch (seq) {
@@ -218,27 +169,6 @@ class ArgsLexer extends LexerBase {
       default: throw `Invalid escape sequence \\${seq} in argument ${this.tokenIdx}`;
     }
   }
-}
+};
 
-//function parse(msg) {
-//  let ret = {
-//    argc: 0,
-//    argv: []
-//  };
-//  let pos = 0;
-//  while (pos < msg.length) {
-//    if (/\s/.test(msg[pos])) {
-//      while (pos < msg.length && /\s/.test(msg[pos])) {
-//        pos++;
-//      }
-//    }
-//    else {
-//      let start = pos;
-//      while (pos < msg.length && !/\s/.test(msg[pos])) {
-//        pos++;
-//      }
-//      ret.argc++;
-//      ret.argv.push(msg.subthis.string(start, pos));
-//    }
-//  }
-//}
+module.exports = Lexer;

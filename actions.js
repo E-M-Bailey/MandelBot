@@ -1,12 +1,12 @@
-module.exports = {
-  error: function(text) {
+class Actions {
+  static error(text) {
     return {
       type: "error",
       data: text
     };
-  },
+  }
 
-  message: function(text, files = []) {
+  static message(text, files = []) {
     return {
       type: "message",
       data: {
@@ -15,4 +15,6 @@ module.exports = {
       }
     };
   }
-};
+}
+
+module.exports = Actions;
