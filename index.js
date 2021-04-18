@@ -2,6 +2,8 @@ const Discord = require("discord.js");
 const Parser = require("./parser.js");
 const client = new Discord.Client();
 
+const PATH = "https://replit.com/@EMBailey/MandelBot#"
+
 function onReady() {
   console.log(`Logged in as ${client.user.tag}!`);
 }
@@ -11,13 +13,18 @@ function onMessage(msg) {
     let res = Parser.execute(msg.content);
     if (res !== undefined)
     {
+      let ch = msg.channel;
       switch (res.type) {
         case "error":
-          msg.channel.send(res.data);
+          ch.send(res.data);
           console.log(`ERROR:\n${res.data}`);
           break;
         case "text":
-          msg.channel.send(res.data);
+          ch.send(res.data);
+          break;
+        case "image":
+          console.log(res.data);
+          ch.send("", {files: [res.data]});
           break;
       }
     }
