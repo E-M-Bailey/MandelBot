@@ -14,7 +14,10 @@ function onMessage(msg) {
       switch (res.type) {
         case "error":
           msg.channel.send(res.data);
-          console.log(res.data);
+          console.log(`ERROR:\n${res.data}`);
+          break;
+        case "text":
+          msg.channel.send(res.data);
           break;
       }
     }

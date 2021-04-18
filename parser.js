@@ -5,7 +5,7 @@ module.exports = {
     let isErr = lexRes.error !== undefined;
     let err = {
       type: "error",
-      data: e
+      data: lexRes.error
     };
     let argv = lexRes.tokens;
     if (argv.length > 0) {
@@ -17,6 +17,34 @@ module.exports = {
     return undefined;
     console.log("done");
   }
+}
+
+function parseBoolean(str) {
+  str = String(str).toLowerCase();
+  if (str == "true") {
+    return true;
+  }
+  else if (str == "false") {
+    return false;
+  }
+  else {
+    return undefined;
+  }
+}
+
+function tempMB(r, i, z, w, h, t, s) {
+  return {
+    type: "text",
+    data: `
+r = ${r},
+i = ${i},
+z = ${z},
+w = ${w},
+h = ${h},
+t = ${t},
+s = ${s}
+`
+  };
 }
 
 function doMandelbrot(argv) {
@@ -32,154 +60,204 @@ function doMandelbrot(argv) {
   let tSpec = false;
   let sSpec = false;
 
-  for (let idx = 1; idx < argv.length(); idx++) {
+  let helpStr = `
+!mandelbrot usage:
+-? or --help: Display this message.
+-r or --real: Set the real component of the center. Requires a real number argument. Default 0.
+-i or --imaginary: Set the imaginary component of the center. Requires a real number argument. Default 0.
+-z or --zoom: Set the zoom in pixels per unit. Requires a positive real number argument. Default 256.
+-w or --width: Set the width of the image. Requires a positive integer. Default 1920.
+-h or --height: Set the height of the image. Requires a positive integer. Default 1080.
+-t or --iterations: Set the number of iterations. Requires a nonnegative integer. Default 256.
+-s or --smooth: Set whether the image is smooth. Requires true or false. Default false.
+`;
+
+  for (let idx = 1; idx < argv.length; idx++) {
     switch(argv[idx]) {
+      case "-?":
+      case "--help":
+        return {
+          type: "text",
+          data: helpStr
+        };
+
       case "-r":
       case "--real":
         if (rSpec) {
           return {
             type: "error",
-            data: "Error (mandelbrot): repeated option -r!";
+            data: "Error (mandelbrot): repeated option -r!"
           };
         }
         rSpec = true;
         idx++;
-        if (idx >= argv.length()) {
+        if (idx >= argv.length) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -r has no value!";
+            data: "Error (mandelbrot): option -r has no value!"
           };
         }
         r = parseFloat(argv[idx]);
         if (!isFinite(r)) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -r has an invalid value!";
+            data: "Error (mandelbrot): option -r has an invalid value!"
           }
         }
         break;
-      case "-i";
+
+      case "-i":
       case "--imaginary":
         if (iSpec) {
           return {
             type: "error",
-            data: "Error (mandelbrot): repeated option -i!";
+            data: "Error (mandelbrot): repeated option -i!"
           };
         }
         iSpec = true;
         idx++;
-        if (idx >= argv.length()) {
+        if (idx >= argv.length) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -i has no value!";
+            data: "Error (mandelbrot): option -i has no value!"
           };
         }
         i = parseFloat(argv[idx]);
         if (!isFinite(i)) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -i has an invalid value!";
+            data: "Error (mandelbrot): option -i has an invalid value!"
           }
         }
         break;
+
       case "-z":
       case "--zoom":
-        if (rSpec) {
+        if (zSpec) {
           return {
             type: "error",
-            data: "Error (mandelbrot): repeated option -r!";
+            data: "Error (mandelbrot): repeated option -z!"
           };
         }
-        rSpec = true;
+        zSpec = true;
         idx++;
-        if (idx >= argv.length()) {
+        if (idx >= argv.length) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -r has no value!";
+            data: "Error (mandelbrot): option -z has no value!"
           };
         }
-        r = parseFloat(argv[idx]);
-        if (!isFinite(r)) {
+        z = parseFloat(argv[idx]);
+        if (!isFinite(z) || z <= 0) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -r has an invalid value!";
+            data: "Error (mandelbrot): option -z has an invalid value!"
           }
         }
         break;
-      case "-w";
+
+      case "-w":
       case "--width":
         if (wSpec) {
           return {
             type: "error",
-            data: "Error (mandelbrot): repeated option -w!";
+            data: "Error (mandelbrot): repeated option -w!"
           };
         }
         wSpec = true;
         idx++;
-        if (idx >= argv.length()) {
+        if (idx >= argv.length) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -w has no value!";
+            data: "Error (mandelbrot): option -w has no value!"
           };
         }
         w = parseInt(argv[idx]);
-        if (!isFinite(w)) {
+        if (!isFinite(w) || w <= 0) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -w has an invalid value!";
+            data: "Error (mandelbrot): option -w has an invalid value!"
           }
         }
         break;
-      case "-h";
+
+      case "-h":
       case "--height":
         if (hSpec) {
           return {
             type: "error",
-            data: "Error (mandelbrot): repeated option -h!";
+            data: "Error (mandelbrot): repeated option -h!"
           };
         }
         hSpec = true;
         idx++;
-        if (idx >= argv.length()) {
+        if (idx >= argv.length) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -h has no value!";
+            data: "Error (mandelbrot): option -h has no value!"
           };
         }
         h = parseInt(argv[idx]);
-        if (!isFinite(h) || h < 0) {
+        if (!isFinite(h) || h <= 0) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -h has an invalid value!";
+            data: "Error (mandelbrot): option -h has an invalid value!"
           }
         }
         break;
-      case "-t";
+
+      case "-t":
       case "--iterations":
         if (tSpec) {
           return {
             type: "error",
-            data: "Error (mandelbrot): repeated option -t!";
+            data: "Error (mandelbrot): repeated option -t!"
           };
         }
         tSpec = true;
         idx++;
-        if (idx >= argv.length()) {
+        if (idx >= argv.length) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -t has no value!";
+            data: "Error (mandelbrot): option -t has no value!"
           };
         }
         t = parseInt(argv[idx]);
         if (!isFinite(t) || t < 0) {
           return {
             type: "error",
-            data: "Error (mandelbrot): option -t has an invalid value!";
+            data: "Error (mandelbrot): option -t has an invalid value!"
+          }
+        }
+        break;
+
+      case "-s":
+      case "--smooth":
+        if (sSpec) {
+          return {
+            type: "error",
+            data: "Error (mandelbrot): repeated option -s!"
+          };
+        }
+        sSpec = true;
+        idx++;
+        if (idx >= argv.length) {
+          return {
+            type: "error",
+            data: "Error (mandelbrot): option -s has no value!"
+          };
+        }
+        s = parseBool(argv[idx]);
+        if (s === undefined) {
+          return {
+            type: "error",
+            data: "Error (mandelbrot): option -s has an invalid value!"
           }
         }
         break;
     }
   }
+  return tempMB(r, i, z, w, h, t, s);
 }
 
 // Subclasses should define a next() method returning the next token or undefined in case of EOF (or throw a string in case of an error).
