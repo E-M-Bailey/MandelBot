@@ -1,3 +1,4 @@
+const Actions = require("./actions.js");
 const Mandelbrot = require("./mandelbrot.js");
 
 module.exports = {
@@ -5,14 +6,15 @@ module.exports = {
     let lexer = new ArgsLexer(msg);
     let lexRes = lexer.allTokens();
     let isErr = lexRes.error !== undefined;
-    let err = {
-      type: "error",
-      data: lexRes.error
-    };
+    //let err = {
+    //  type: "error",
+    //  data: lexRes.error
+    //};
+    let err = Actions.message(lexRes.error, []);
     let argv = lexRes.tokens;
     if (argv.length > 0) {
       switch (argv[0]) {
-        case "!mandelbrot": return isErr ? err : Mandelbrot.execute(argv);
+        case "!mandelbrot": return isErr ? [err] : Mandelbrot.execute(argv);
       }
     }
     return undefined;
@@ -106,8 +108,12 @@ class LexerBase {
   allTokens() {
     let tokens = [];
     let token;
-    while ((token = this.next()) !== undefined) {
+    while (true) {
       try {
+        token = this.next();
+        if (token === undefined) {
+          break;
+        }
         tokens.push(token);
         this.tokenIdx++;
       }
@@ -160,7 +166,7 @@ class ArgsLexer extends LexerBase {
         res += this.advance();
       }
     }
-    throw `No closing ${delim} in argument ${this.tokenIdx + 1}!`;
+    throw `No closing ${delim} in argument ${this.tokenIdx}`;
   }
 
   // Parses a string without delimiters
@@ -185,7 +191,7 @@ class ArgsLexer extends LexerBase {
   escaped() {
     this.advance();
     if (this.curChar === undefined) {
-      throw `Invalid escape sequence \\ in argument ${this.tokenIdx + 1}!`;
+      throw `Invalid escape sequence \\ in argument ${this.tokenIdx}`;
     }
     let seq = this.advance();
     if (/\s/.test(seq)) {
@@ -203,13 +209,13 @@ class ArgsLexer extends LexerBase {
       case "u":
         seq = this.advance(4);
         if (!/^[0-9a-fA-F]{4}$/.test(seq)) {
-          throw `Invalid escape sequence \\u${seq} in argument ${this.tokenIdx + 1}!`;
+          throw `Invalid escape sequence \\u${seq} in argument ${this.tokenIdx}`;
         }
         else {
           return String.fromCharCode(parseInt(seq, 16));
         }
         break;
-      default: throw `Invalid escape sequence \\${seq} in argument ${this.tokenIdx + 1}!`;
+      default: throw `Invalid escape sequence \\${seq} in argument ${this.tokenIdx}`;
     }
   }
 }

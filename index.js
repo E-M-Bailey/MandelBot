@@ -14,18 +14,32 @@ function onMessage(msg) {
     if (res !== undefined)
     {
       let ch = msg.channel;
-      switch (res.type) {
-        case "error":
-          ch.send(res.data);
-          console.log(`ERROR:\n${res.data}`);
-          break;
-        case "text":
-          ch.send(res.data);
-          break;
-        case "image":
-          console.log(res.data);
-          ch.send("", {files: [res.data]});
-          break;
+      for (action of res) {
+        if (action !== undefined) {
+          try {
+            //console.log(JSON.stringify(action));
+            let data = action.data;
+            switch (action.type) {
+              case "error":
+                ch.send(data);
+                console.log(`ERROR:\n${data}`);
+                break;
+              case "message":
+                ch.send(data.text, {files: data.files});
+            }
+          }
+          catch (e) {
+            try {
+              ch.send(`Internal Error: ${e}`);
+            }
+            catch (e1) {
+              console.log(`ERROR SENDING ERROR:\n${e1}`);
+            }
+            finally {
+              console.log(`ERROR:\n${e}`);
+            }
+          }
+        }
       }
     }
   }

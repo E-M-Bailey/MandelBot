@@ -1,3 +1,4 @@
+const Actions = require("./actions.js");
 const Jimp = require("jimp");
 
 module.exports = {
@@ -7,243 +8,218 @@ module.exports = {
 };
 
 function parseArgs(argv) {
-  let r = .0, i = .0;
-  let z = 256.;
-  let w = 1920, h = 1080;
+  let r = -.5;
+  let i = 0.;
+  let z = 250.;
+  let d = 5;
+  let w = 1920;
+  let h = 1080;
   let t = 256;
   let s = false;
   
-  let rSpec = false, iSpec = false;
+  let rSpec = false;
+  let iSpec = false;
   let zSpec = false;
-  let wSpec = false, hSpec = false;
+  let dSpec = false;
+  let wSpec = false;
+  let hSpec = false;
   let tSpec = false;
-  let sSpec = false;
+  //let sSpec = false;
 
-  let helpStr = `
+  const helpMsg = Actions.message(`
 !mandelbrot usage:
 -? or --help: Display this message.
--r or --real: Set the real component of the center. Requires a real number argument. Default 0.
+-r or --real: Set the real component of the center. Requires a real number argument. Default -0.5.
 -i or --imaginary: Set the imaginary component of the center. Requires a real number argument. Default 0.
--z or --zoom: Set the zoom in pixels per unit. Requires a positive real number argument. Default 256.
+-z or --zoom: Set the zoom in pixels per unit. Requires a positive real number argument. Default 250.
+-d or --dist: Set the distance from the origin considered divergence. Requires a real number >= 2. Default 5.
 -w or --width: Set the width of the image. Requires a positive integer. Default 1920.
 -h or --height: Set the height of the image. Requires a positive integer. Default 1080.
 -t or --iterations: Set the number of iterations. Requires a nonnegative integer. Default 256.
--s or --smooth: Set whether the image is smooth. Requires true or false. Default false.
-`;
+`);
+  function repMsg(opt) {
+    return Actions.message(`Error (mandelbrot): repeated option ${opt}`);
+  }
+  function novMsg(opt) {
+    return Actions.message(`Error (mandelbrot): option ${opt} has no value`);
+  }
+  function invMsg(opt) {
+    return Actions.message(`Error (mandelbrot): option ${opt} has an invalid value!`);
+  }
+  function unkMsg(opt) {
+    return Actions.message(`Error (mandelbrot): unknown option ${opt}`);
+  }
+// TODO implement --smooth
+//-s or --smooth: Set whether the image is smooth. Requires true or false. Default false.
 
   for (let idx = 1; idx < argv.length; idx++) {
-    switch(argv[idx]) {
+    let opt = argv[idx];
+    switch(opt) {
       case "-?":
       case "--help":
-        return {
-          type: "text",
-          data: helpStr
-        };
+        return [repMsg];
 
       case "-r":
       case "--real":
         if (rSpec) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): repeated option -r!"
-          };
+          return [repMsg(opt)];
         }
         rSpec = true;
         idx++;
         if (idx >= argv.length) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -r has no value!"
-          };
+          return [novMsg(opt)];
         }
         r = parseFloat(argv[idx]);
         if (!isFinite(r)) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -r has an invalid value!"
-          }
+          return [invMsg(opt)];
         }
         break;
 
       case "-i":
       case "--imaginary":
         if (iSpec) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): repeated option -i!"
-          };
+          return [repMsg(opt)];
         }
         iSpec = true;
         idx++;
         if (idx >= argv.length) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -i has no value!"
-          };
+          return [novMsg(opt)];
         }
         i = parseFloat(argv[idx]);
         if (!isFinite(i)) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -i has an invalid value!"
-          }
+          return [invMsg(opt)];
         }
         break;
 
       case "-z":
       case "--zoom":
         if (zSpec) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): repeated option -z!"
-          };
+          return [repMsg(opt)];
         }
         zSpec = true;
         idx++;
         if (idx >= argv.length) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -z has no value!"
-          };
+          return [novMsg(opt)];
         }
         z = parseFloat(argv[idx]);
         if (!isFinite(z) || z <= 0) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -z has an invalid value!"
-          }
+          return [invMsg(opt)];
+        }
+        break;
+
+      case "-d":
+      case "--dist":
+        if (dSpec) {
+          return [repMsg(opt)];
+        }
+        dSpec = true;
+        idx++;
+        if (idx >= argv.length) {
+          return [novMsg(opt)];
+        }
+        d = parseFloat(argv[idx]);
+        if (!isFinite(d) || d < 2) {
+          return [invMsg(opt)];
         }
         break;
 
       case "-w":
       case "--width":
         if (wSpec) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): repeated option -w!"
-          };
+          return [repMsg(opt)];
         }
         wSpec = true;
         idx++;
         if (idx >= argv.length) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -w has no value!"
-          };
+          return [novMsg(opt)];
         }
         w = parseInt(argv[idx]);
         if (!isFinite(w) || w <= 0) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -w has an invalid value!"
-          }
+          return [invMsg(opt)];
         }
         break;
 
       case "-h":
       case "--height":
         if (hSpec) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): repeated option -h!"
-          };
+          return [repMsg(opt)];
         }
         hSpec = true;
         idx++;
         if (idx >= argv.length) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -h has no value!"
-          };
+          return [novMsg(opt)];
         }
         h = parseInt(argv[idx]);
         if (!isFinite(h) || h <= 0) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -h has an invalid value!"
-          }
+          return [invMsg(opt)];
         }
         break;
 
       case "-t":
       case "--iterations":
         if (tSpec) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): repeated option -t!"
-          };
+          return [repMsg(opt)];
         }
         tSpec = true;
         idx++;
         if (idx >= argv.length) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -t has no value!"
-          };
+          return [novMsg(opt)];
         }
         t = parseInt(argv[idx]);
         if (!isFinite(t) || t < 0) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -t has an invalid value!"
-          }
+          return [invMsg(opt)];
         }
         break;
 
-      case "-s":
-      case "--smooth":
-        if (sSpec) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): repeated option -s!"
-          };
-        }
-        sSpec = true;
-        idx++;
-        if (idx >= argv.length) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -s has no value!"
-          };
-        }
-        s = parseBool(argv[idx]);
-        if (s === undefined) {
-          return {
-            type: "error",
-            data: "Error (mandelbrot): option -s has an invalid value!"
-          }
-        }
-        break;
+      default:
+        return [unkMsg(opt)];
+
+      //case "-s":
+      //case "--smooth":
+      //  if (sSpec) {
+      //    return {
+      //      type: "error",
+      //      data: "Error (mandelbrot): repeated option -s!"
+      //    };
+      //  }
+      //  sSpec = true;
+      //  idx++;
+      //  if (idx >= argv.length) {
+      //    return {
+      //      type: "error",
+      //      data: "Error (mandelbrot): option -s has no value!"
+      //    };
+      //  }
+      //  s = parseBool(argv[idx]);
+      //  if (s === undefined) {
+      //    return {
+      //      type: "error",
+      //      data: "Error (mandelbrot): option -s has an invalid //value!"
+      //    }
+      //  }
+      //  break;
     }
   }
   try {
-    return mkImg(r, i, z, w, h, t, s);
+    let filename = "mandelbrot.png";
+    mkImg(filename, r, i, z, d, w, h, t, s);
+    return [Actions.message("", [filename])];
   }
   catch (e) {
-    return {
-      type: "error",
-      data: `Error (mandelbrot): ${e}`
-    };
+    return Actions.error(`Internal error (mandelbrot): ${e}`);
   }
 }
 
-function mkImg(r, i, z, w, h, t, s) {
-  let filename = "test.png";
+function mkImg(filename, r, i, z, d, w, h, t, s) {
   let image = new Jimp(w, h, function(err, image) {
     if (err) {
       throw err;
     }
   });
 
-  generate(r, i, z, w, h, t, s, image);
-
-  //for (let x = 0; x < w; x++) {
-  //  for (let y = 0; y < h; y++) {
-  //    if (x > y) {
-  //      image.setPixelColor(generate(r, i, z, w, h, y, s, x, y), x, y);
-  //    }
-  //  }
-  //}
+  console.log("generating");
+  generate(r, i, z, d, w, h, t, s, image);
+  console.log("done\n");
 
   image.write(filename, function(err) {
     if (err) {
@@ -251,10 +227,7 @@ function mkImg(r, i, z, w, h, t, s) {
     }
   });
 
-  return {
-    type: "image",
-    data: filename
-  };
+  return [Actions.message("", [filename])];
 }
 
 function clamp(x, min, max) {
@@ -311,12 +284,12 @@ function hsvaToHex(h, s, v, a) {
   return hex;
 }
 
-function generate(r, i, z, w, h, t, s, image) {
-  console.log("generating");
+function generate(r, i, z, d, w, h, t, s, image) {
+  let d2 = d * d;
   let zInv = 1 / z;
   let hw = w / 2;
   let hh = h / 2;
-  let defCR = r - hh * zInv;
+  let defCR = r - hw * zInv;
   let cr = defCR;
   let ci = i + hh * zInv;
   let compT = 0;
@@ -327,6 +300,10 @@ function generate(r, i, z, w, h, t, s, image) {
   let mod2;
   let color;
   const LOG2 = Math.log(2);
+  const LOG_LINES = true;
+  if (LOG_LINES) {
+    console.log(`0/${h}`);
+  }
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       if (inMainBulb(cr, ci)) {
@@ -341,7 +318,7 @@ function generate(r, i, z, w, h, t, s, image) {
           zi2 = zi * zi;
           compT++;
           mod2 = zr2 + zi2;
-          if (mod2 > 25) {
+          if (mod2 >= d2) {
             color = true;
             break;
           }
@@ -379,6 +356,9 @@ function generate(r, i, z, w, h, t, s, image) {
     }
     cr = defCR;
     ci -= zInv;
+    if (LOG_LINES) {
+      console.log(`${y + 1}/${h}`);
+    }
   }
 }
 
