@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "discord.js": "^12.5.3",
+    "intl": "^1.2.5",
     "jimp": "^0.16.1"
   }
 }

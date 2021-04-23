@@ -222,14 +222,14 @@ Constraints: None
 Description: The center real component.
   Arguments: A real number
 Constraints: None
-   Defaults: ${Settings.r}
+   Defaults: ${Settings.r.toLocaleString()}
 \`\`\``;
 		let imaginaryText =
 `\`\`\`
 Description: The center imaginary component.
   Arguments: A real number
 Constraints: None
-   Defaults: ${Settings.i}
+   Defaults: ${Settings.i.toLocaleString()}
 \`\`\``;
 		let zoomText =
 `\`\`\`
@@ -239,40 +239,40 @@ Description: The zoom level of the image in
              mean of width and height.
   Arguments: A real number
 Constraints: Must be greater than zero
-   Defaults: ${Settings.z}
+   Defaults: ${Settings.z.toLocaleString()}
 \`\`\``;
 		let iterationsText =
 `\`\`\`
 Description: The number of iterations.
   Arguments: An integer
 Constraints: Must be greater than zero
-   Defaults: ${Settings.t}
+   Defaults: ${Settings.t.toLocaleString()}
 \`\`\``;
 		let distText =
 `\`\`\`
 Description: The escape radius.
   Arguments: A real number
 Constraints: Must be at least two
-   Defaults: ${Settings.d}
+   Defaults: ${Settings.d.toLocaleString()}
 \`\`\``;
 		let widthText =
 `\`\`\`
 Description: The image width.
   Arguments: An integer
 Constraints: Must be greater than zero
-   Defaults: ${Settings.w}
+   Defaults: ${Settings.w.toLocaleString()}
 \`\`\``;
 		let heightText =
 `\`\`\`
 Description: The image height.
   Arguments: An integer
 Constraints: Must be greater than zero
-   Defaults: ${Settings.w}
+   Defaults: ${Settings.h.toLocaleString()}
 \`\`\``;
 		let constraintsText =
 `\`\`\`
-    w * h ≤ ${Settings.MAX_SIZE}.
-t * w * h ≤ ${Settings.MAX_COST}.
+    w * h ≤ ${Settings.MAX_SIZE.toLocaleString()}
+t * w * h ≤ ${Settings.MAX_COST.toLocaleString()}
 \`\`\``;
 //		let helpTxt =
 //`

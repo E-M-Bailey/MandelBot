@@ -158,23 +158,23 @@ class Generate {
 			fields: [
 				{
 					name: "Center",
-					value: args.i >= 0 ? `${args.r} + ${args.i}i` : `${args.r} - ${-args.i}i`
+					value: args.i >= 0 ? `${args.r.toLocaleString()} + ${args.i.toLocaleString()}i` : `${args.r.toLocaleString()} - ${-args.i.toLocaleString()}i`
 				},
 				{
 					name: "Zoom",
-					value: `${args.z}x`
+					value: `${args.z.toLocaleString()}x`
 				},
 				{
 					name: "Iterations",
-					value: `${args.t}`
+					value: `${args.t.toLocaleString()}`
 				},
 				{
 					name: "Escape Radius",
-					value: `${args.d}`
+					value: `${args.d.toLocaleString()}`
 				},
 				{
 					name: "Dimensions",
-					value: `${args.w}x${args.h}`
+					value: `${args.w.toLocaleString()}x${args.h.toLocaleString()}`
 				}
 			],
 			thumbnail: {

@@ -3,7 +3,7 @@ module.exports = {
 		i: 0.,
 		z: 0.2,
 		t: 256,
-		d: 500.,
+		d: 2000.,
 		w: 1920,
 		h: 1080,
 		s: false,
