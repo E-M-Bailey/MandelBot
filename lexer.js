@@ -98,12 +98,12 @@ class Lexer {
   // extra is the argument passed to escape.
   quoted(delim, extra) {
     if (delim === undefined) {
-      delim = new RegExp(curChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      delim = new RegExp(this.curChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     }
     this.advance();
     let res = "";
     while (this.curChar !== undefined) {
-      if (this.curChar == delim) {
+      if (delim.test(this.curChar)) {
         this.advance();
         return res;
       }

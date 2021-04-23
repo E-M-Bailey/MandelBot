@@ -1,120 +1,224 @@
-const Jimp = require("jimp");
+const Fs = require("fs");
+const Path = require("path");
 
+const ChildProcess = require("child_process");
+const Discord = require("discord.js");
+
+const Actions = require("../actions.js");
+const Settings = require("./settings.js");
+const Interface = require("../interface.js");
+const Lexer = require("../lexer.js");
 const ImgUtil = require("../imgutil.js");
 
+class ResLexer extends Lexer {
+
+  constructor(str) {
+    super(str);
+  }
+
+  next() {
+    this.skip(/\s/);
+    if (this.curChar === undefined) {
+      return undefined;
+    }
+    else if (/["']/.test(this.curChar)) {
+      return this.quoted();
+    }
+    else {
+      return this.unquoted();
+    }
+  }
+}
+
+const LOG_ROWS = true;
+
 class Generate {
-	static mkImg(filename, w, h, args) {
-		let image = ImgUtil.mkImg(w, h);
 
-		console.log("generating");
-		this.generate(args, image);
-		console.log("done\n");
+	static generate(filename, args, itfArgs) {
 
-		return ImgUtil.writeImg(filename, image);
+		let ls = ChildProcess.spawn(
+			"./mandelbrot/generate",
+			[
+				filename,
+				args.r.toString(),
+				args.i.toString(),
+				args.z.toString(),
+				args.t.toString(),
+				args.d.toString(),
+				args.w.toString(),
+				args.h.toString(),
+			]
+		);
+
+		ls.on("error", function(code) {
+			Interface.doAction(Actions.error(`INTERNAL ERROR: couldn't spawn mandelbrot/generate (code ${code})`), itfArgs);
+		});
+
+		ls.stdout.setEncoding("utf8");
+		ls.stdout.on("data", this.acceptInput(filename, args, itfArgs));
 	}
 
-	static generate(args, image) {
-		let r = args.r;
-		let i = args.i;
-		let z = args.z;
-		let d = args.d;
-		let w = args.w;
-		let h = args.h;
-		let t = args.t;
-		let s = args.s;
-		let d2 = d * d;
-		let zInv = 1 / z;
-		let hw = w / 2;
-		let hh = h / 2;
-		let defCR = r - hw * zInv;
-		let cr = defCR;
-		let ci = i + hh * zInv;
-		let compT = 0;
-		let zr = 0;
-		let zi = 0;
-		let zr2 = 0;
-		let zi2 = 0;
-		let mod2;
-		let diverges;
-		const LOG2 = Math.log(2);
-		const LOG_LINES = true;
-		if (LOG_LINES) {
-			console.log(`0/${h}`);
-		}
-		for (let y = 0; y < h; y++) {
-			for (let x = 0; x < w; x++) {
-				if (this.inMainBulb(cr, ci)) {
-					diverges = false;
-				}
-				else {
-					while (true) {
-						zi *= zr;
-						zi += zi + ci;
-						zr = zr2 - zi2 + cr;
-						zr2 = zr * zr;
-						zi2 = zi * zi;
-						compT++;
-						mod2 = zr2 + zi2;
-						if (mod2 >= d2) {
-							diverges = true;
-							break;
-						}
-						if (compT > t) {
-							diverges = false;
-							break;
+	static acceptInput(filename, args, itfArgs) {
+		return function(data) {
+			for (let msg of data.split("\n")) {
+				try {
+					let lexer = new ResLexer(msg);
+					let lexRes = lexer.allTokens();
+					let error = lexRes.error;
+					let argv = lexRes.tokens;
+					if (argv.length > 0) {
+						switch (argv[0]) {
+							case "row":
+								if (error) {
+									Interface.doAction(Actions.error(error), itfArgs);
+								}
+								else {
+									Generate.doRow(argv, itfArgs);
+								}
+								break;
+							case "prg":
+								if (error) {
+									Interface.doAction(Actions.error(error), itfArgs);
+								}
+								else {
+									Generate.doPrg(argv, itfArgs);
+								}
+								break;
+							case "done":
+								if (error) {
+									Interface.doAction(Actions.error(lexRes.error), itfArgs);
+								}
+								else {
+									Generate.doDone(argv, args, filename, itfArgs);
+								}
+								break;
+							case "log":
+								for (let i = 1; i < argv.length; i++) {
+									console.log(argv[i]);
+								}
+								break;
+							default:
+								console.log(argv[0]);
 						}
 					}
 				}
-				if (diverges) {
-					zi *= zr;
-					zi += zi + ci;
-					zr = zr2 - zi2 + cr;
-					zr2 = zr * zr;
-					zi2 = zi * zi;
-					zi += zi + ci;
-					zr = zr2 - zi2 + cr;
-					zr2 = zr * zr;
-					zi2 = zi * zi;
-					compT += 2;
-					mod2 = zr2 + zi2;
-					let mu = compT - Math.log(Math.log(mod2)) / LOG2 + 1;
-					let shaded = ImgUtil.hsvaToHex(mu / 36, 1, 1, 1);
-					image.setPixelColor(shaded, x, y);
+				catch (e) {
+					Interface.doAction(Actions.error(e), itfArgs);
 				}
-				else {
-					image.setPixelColor(0x000000FF, x, y);
-				}
-				compT = 0;
-				cr += zInv;
-				zr = 0;
-				zr2 = 0;
-				zi = 0;
-				zi2 = 0;
-			}
-			cr = defCR;
-			ci -= zInv;
-			if (LOG_LINES) {
-				console.log(`${y + 1}/${h}`);
 			}
 		}
 	}
 
-	static inMainBulb(cr, ci) {
-		let cr2 = cr * cr;
-		let ci2 = ci * ci;
-		let cm2 = cr2 + ci2;
-		let cm = Math.sqrt(cm2);
-		let cmInv = 1 / cm;
-		let ur = cr * cmInv;
-		let ui = ci * cmInv;
-		let hui = ci * 0.5;
-		let br = ur * 0.5 + hui * ui - 0.25;
-		let bi = hui - ur * hui;
-		if (cm2 <= br * br + bi * bi) {
-			return true;
+	static doRow(argv, itfArgs) {
+		console.log("row " + argv[1] + "/" + argv[2]);
+	}
+
+	static doPrg(argv, itfArgs) {
+		console.log(`${argv[1]}%`);
+	}
+
+	static doDone(argv, args, filename, itfArgs) {
+		let binFile = argv[1];
+		let image = ImgUtil.readBin(binFile, args.w, args.h);
+		Fs.unlink(binFile, function(err) {
+			if (err) {
+				Interface.doAction(Actions.error(err));
+				return;
+			}
+			console.log("unlinked");
+			let fname = `${filename}.png`;
+			ImgUtil.writeImg(fname, image, function(err) {
+				if (err) {
+					Interface.doAction(Actions.error(err));
+					return;
+				}
+				console.log("written");
+				Fs.stat(`./${fname}`, function(err, stats) {
+					if (err) {
+						Interface.doAction(Actions.error(err));
+						return;
+					}
+					Generate.sendReply(args, fname, stats.size, itfArgs);
+				});	
+			});
+		});
+	}
+
+	static sendReply(args, fname, fsize, itfArgs) {
+		let myAvatar = itfArgs.me.avatarURL();
+		let aAvatar = itfArgs.author.avatarURL();
+		let embed = {
+			author: {
+				name: itfArgs.member ? itfArgs.member.displayName : "",
+				icon_url: aAvatar,
+				url: itfArgs.message.url
+			},
+			title: "Mandelbrot Set",
+			description: `Requested by ${itfArgs.author.toString()}`,
+			fields: [
+				{
+					name: "Center",
+					value: args.i >= 0 ? `${args.r} + ${args.i}i` : `${args.r} - ${-args.i}i`
+				},
+				{
+					name: "Zoom",
+					value: `${args.z}x`
+				},
+				{
+					name: "Iterations",
+					value: `${args.t}`
+				},
+				{
+					name: "Escape Radius",
+					value: `${args.d}`
+				},
+				{
+					name: "Dimensions",
+					value: `${args.w}x${args.h}`
+				}
+			],
+			thumbnail: {
+				url: myAvatar
+			},
+			image: {
+				url: `attachment://${Path.basename(fname)}`
+			},
+			footer: {
+				text: "m!mandelbrot",
+				icon_url: myAvatar
+			}
+		};
+		for (let arg in args) {
+			let val = args[arg];
+			if (val != Settings[arg]) {
+				embed.footer.text += ` -${arg} ${val}`;
+			}
 		}
-		let icr = cr + 1;
-		return icr * icr + ci * ci <= 0.0625;
+		if (fsize > 8000000) {
+			Interface.doAction(Actions.error(`File size too large (${fsize})`), itfArgs);
+		}
+		Interface.doAction(Actions.message("", [fname], embed, Generate.addReactions(false)), itfArgs);
+		//if (fsize < 8000000) {
+		//	embed.image = {
+		//		url: `attachment://${Path.basename(fname)}`
+		//	};
+		//	Interface.doAction(Actions.message("", [fname], embed), itfArgs);
+		//}
+		//else {
+		//	embed.image = {
+		//		url: `https://replit.com/@EMBailey/MandelBot#${fname}`
+		//	};
+		//	Interface.doAction(Actions.message("", [], embed), itfArgs);
+		//}
+	}
+
+	static addReactions(isHelp) {
+		let reactions = isHelp ? ["🗑️"] : ["🗑️", "⬆️", "↖️", "⬅️", "↙️", "⬇️", "↘️", "➡️", "↗️", "🔍", "🔭"];
+		return async function(msg) {
+			for (let reaction of reactions) {
+				await msg.react(reaction);
+			}
+		}
 	}
 }
 

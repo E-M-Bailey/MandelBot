@@ -1,50 +1,31 @@
 const Discord = require("discord.js");
+
+const Interface = require("./interface.js");
 const Exec = require("./exec.js");
 
-const client = new Discord.Client();
+var procUsers = {};
 
 function onReady() {
-	console.log(`Logged in as ${client.user.tag}!`);
+	console.log(`Logged in as ${Interface.client.user.tag}!`);
 }
 
 function onMessage(msg) {
-	if (msg.author != client.user) {
-		let res = Exec.execute(msg.content);
-		if (res !== undefined) {
-			let ch = msg.channel;
-			//console.log(JSON.stringify(res));
-			for (action of res) {
-				if (action !== undefined) {
-					try {
-						//console.log(JSON.stringify(action));
-						let data = action.data;
-						switch (action.type) {
-							case "error":
-								ch.send(data);
-								console.log(`ERROR:\n${data}`);
-								break;
-							case "message":
-								ch.send(data.text, { files: data.files });
-						}
-					}
-					catch (e) {
-						try {
-							ch.send(`Internal Error: ${e}`);
-						}
-						catch (e1) {
-							console.log(`ERROR SENDING ERROR:\n${e1}`);
-						}
-						finally {
-							console.log(`ERROR:\n${e}`);
-						}
-					}
-				}
-			}
-		}
+	if (msg.author != Interface.client.user) {
+		
+		let itfArgs = {
+			me: Interface.client.user,
+			client: Interface.client,
+			message: msg,
+			author: msg.author,
+			channel: msg.channel,
+			guild: msg.channel.guild,
+			member: msg.channel.guild.member(msg.author)
+		};
+		Interface.doActions(Exec.execute(msg.content, itfArgs), itfArgs);
 	}
 }
 
-client.on("ready", onReady);
-client.on("message", onMessage);
+Interface.client.on("ready", onReady);
+Interface.client.on("message", onMessage);
 
-client.login(process.env.TOKEN);
+Interface.client.login(process.env.TOKEN);

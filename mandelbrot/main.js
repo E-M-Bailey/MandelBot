@@ -1,17 +1,22 @@
 const Actions = require("../actions.js");
-
+const Settings = require("./settings.js");
 const Generate = require("./generate.js");
 
+// TODO add request limits
+// TODO add a request queue
+// TODO add a progress bar
+// TODO add per-guild, per-channel, per-user data storage
+
 class Mandelbrot {
-	static execute(argv) {
-		let r = -.5;
-		let i = 0.;
-		let z = 250.;
-		let d = 500.;
-		let w = 1920;
-		let h = 1080;
-		let t = 256;
-		let s = false;
+	static execute(argv, itfArgs) {
+		let r = Settings.r;
+		let i = Settings.i;
+		let z = Settings.z;
+		let d = Settings.d;
+		let w = Settings.w;
+		let h = Settings.h;
+		let t = Settings.t;
+		let s = Settings.s;
 		
 		let rSpec = false;
 		let iSpec = false;
@@ -30,7 +35,7 @@ class Mandelbrot {
 			switch(opt) {
 				case "-?":
 				case "--help":
-					return [this.helpMsg(opt)];
+					return [this.hlpMsg(opt, itfArgs)];
 
 				case "-r":
 				case "--real":
@@ -40,7 +45,7 @@ class Mandelbrot {
 					rSpec = true;
 					idx++;
 					if (idx >= argv.length) {
-						return [this.inovvMsg(opt)];
+						return [this.novMsg(opt)];
 					}
 					r = parseFloat(argv[idx]);
 					if (!isFinite(r)) {
@@ -56,7 +61,7 @@ class Mandelbrot {
 					iSpec = true;
 					idx++;
 					if (idx >= argv.length) {
-						return [this.inovvMsg(opt)];
+						return [this.novMsg(opt)];
 					}
 					i = parseFloat(argv[idx]);
 					if (!isFinite(i)) {
@@ -72,10 +77,26 @@ class Mandelbrot {
 					zSpec = true;
 					idx++;
 					if (idx >= argv.length) {
-						return [this.inovvMsg(opt)];
+						return [this.novMsg(opt)];
 					}
 					z = parseFloat(argv[idx]);
 					if (!isFinite(z) || z <= 0) {
+						return [this.invMsg(opt)];
+					}
+					break;
+
+				case "-t":
+				case "--iterations":
+					if (tSpec) {
+						return [this.repMsg(opt)];
+					}
+					tSpec = true;
+					idx++;
+					if (idx >= argv.length) {
+						return [this.novMsg(opt)];
+					}
+					t = parseInt(argv[idx]);
+					if (!isFinite(t) || t < 0) {
 						return [this.invMsg(opt)];
 					}
 					break;
@@ -88,7 +109,7 @@ class Mandelbrot {
 					dSpec = true;
 					idx++;
 					if (idx >= argv.length) {
-						return [this.inovvMsg(opt)];
+						return [this.novmMsg(opt)];
 					}
 					d = parseFloat(argv[idx]);
 					if (!isFinite(d) || d < 2) {
@@ -104,7 +125,7 @@ class Mandelbrot {
 					wSpec = true;
 					idx++;
 					if (idx >= argv.length) {
-						return [this.inovvMsg(opt)];
+						return [this.novMsg(opt)];
 					}
 					w = parseInt(argv[idx]);
 					if (!isFinite(w) || w <= 0) {
@@ -120,26 +141,10 @@ class Mandelbrot {
 					hSpec = true;
 					idx++;
 					if (idx >= argv.length) {
-						return [this.inovvMsg(opt)];
+						return [this.novMsg(opt)];
 					}
 					h = parseInt(argv[idx]);
 					if (!isFinite(h) || h <= 0) {
-						return [this.invMsg(opt)];
-					}
-					break;
-
-				case "-t":
-				case "--iterations":
-					if (tSpec) {
-						return [this.repMsg(opt)];
-					}
-					tSpec = true;
-					idx++;
-					if (idx >= argv.length) {
-						return [this.inovvMsg(opt)];
-					}
-					t = parseInt(argv[idx]);
-					if (!isFinite(t) || t < 0) {
 						return [this.invMsg(opt)];
 					}
 					break;
@@ -174,7 +179,13 @@ class Mandelbrot {
 			}
 		}
 		try {
-			let filename = "mandelbrot.png";
+			if (w * h > Settings.MAX_SIZE) {
+				return [this.sizMsg(w * h)];
+			}
+			if (w * h * t > Settings.MAX_COST) {
+				return [this.cstMsg(w * h * t)];
+			}
+			let filename = "mandelbrot/img/" + Math.floor(Math.random() * 1073741824);
 			let args = {
 				r: r,
 				i: i,
@@ -185,12 +196,9 @@ class Mandelbrot {
 				t: t,
 				s: s
 			};
-			//console.log(JSON.stringify(Generate));
-			Generate.mkImg(filename, w, h, args);
-			return [Actions.message("", [filename])];
+			Generate.generate(filename, args, itfArgs);
 		}
 		catch (e) {
-			//tr = e.stack === undefined ? e : e.stack;
 			try {
 				console.trace(e);
 			}
@@ -199,18 +207,152 @@ class Mandelbrot {
 		}
 	}
 
-	static hlpMsg(opt) {
-		return Actions.message(`
-	!mandelbrot usage:
-	-? or --help: Display this message.
-	-r or --real: Set the real component of the center. Requires a real number argument. Default -0.5.
-	-i or --imaginary: Set the imaginary component of the center. Requires a real number argument. Default 0.
-	-z or --zoom: Set the zoom in pixels per unit. Requires a positive real number argument. Default 250.
-	-d or --dist: Set the distance from the origin considered divergence. Requires a real number >= 2. Default 500.
-	-w or --width: Set the width of the image. Requires a positive integer. Default 1920.
-	-h or --height: Set the height of the image. Requires a positive integer. Default 1080.
-	-t or --iterations: Set the number of iterations. Requires a nonnegative integer. Default 256.
-	`);
+	static hlpMsg(opt, itfArgs) {
+//aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+//^ 2 shorter than max line length
+		let helpText =
+`\`\`\`
+Description: Displays this message.
+  Arguments: None
+Constraints: None
+   Defaults: None
+\`\`\``;
+		let realText =
+`\`\`\`
+Description: The center real component.
+  Arguments: A real number
+Constraints: None
+   Defaults: ${Settings.r}
+\`\`\``;
+		let imaginaryText =
+`\`\`\`
+Description: The center imaginary component.
+  Arguments: A real number
+Constraints: None
+   Defaults: ${Settings.i}
+\`\`\``;
+		let zoomText =
+`\`\`\`
+Description: The zoom level of the image in
+             image sizes per unit. Image size
+             is defined as the geometric
+             mean of width and height.
+  Arguments: A real number
+Constraints: Must be greater than zero
+   Defaults: ${Settings.z}
+\`\`\``;
+		let iterationsText =
+`\`\`\`
+Description: The number of iterations.
+  Arguments: An integer
+Constraints: Must be greater than zero
+   Defaults: ${Settings.t}
+\`\`\``;
+		let distText =
+`\`\`\`
+Description: The escape radius.
+  Arguments: A real number
+Constraints: Must be at least two
+   Defaults: ${Settings.d}
+\`\`\``;
+		let widthText =
+`\`\`\`
+Description: The image width.
+  Arguments: An integer
+Constraints: Must be greater than zero
+   Defaults: ${Settings.w}
+\`\`\``;
+		let heightText =
+`\`\`\`
+Description: The image height.
+  Arguments: An integer
+Constraints: Must be greater than zero
+   Defaults: ${Settings.w}
+\`\`\``;
+		let constraintsText =
+`\`\`\`
+    w * h ≤ ${Settings.MAX_SIZE}.
+t * w * h ≤ ${Settings.MAX_COST}.
+\`\`\``;
+//		let helpTxt =
+//`
+//-? or --help: Display this message.
+//
+//-r or --real: Set the real component of the center. Requires a real number argument. Default ${Settings.r}.
+//
+//-i or --imaginary: Set the imaginary component of the center. Requires a real number argument. Default $//{Settings.i}.
+//
+//-z or --zoom: Set the zoom in image diagonals per unit. The image size here is the geometric mean of the width and the height. Requires a positive real number argument. //Default ${Settings.z}.
+//
+//-t or --iterations: Set the number of iterations. Requires a nonnegative integer. Default ${Settings.t}.
+//
+//-d or --dist: Set the distance from the origin considered //divergence. Requires a real number >= 2. Default $//{Settings.d}.
+//
+//-w or --width: Set the width of the image. Requires a positive integer. Default ${Settings.w}.
+//
+//-h or --height: Set the height of the image. Requires a positive integer. Default ${Settings.h}.
+//
+//The image should have at most ${Settings.MAX_SIZE} pixels.
+//
+//The image's cost (which is defined as the product of width, height and iterations) may be at most $//{Settings.MAX_COST}.
+//`;
+	let myAvatar = itfArgs.me.avatarURL();
+	let aAvatar = itfArgs.author.avatarURL();
+	let embed = {
+			author: {
+				name: itfArgs.member ? itfArgs.member.displayName : "",
+				icon_url: aAvatar,
+				url: itfArgs.message.url
+			},
+			title: "Mandelbrot Set Help",
+			description: `Requested by ${itfArgs.author.toString()}`,
+			fields: [
+				{
+					name: "-? or --help",
+					value: helpText
+				},
+				{
+					name: "-r or --real",
+					value: realText
+				},
+				{
+					name: "-i or --imaginary",
+					value: imaginaryText
+				},
+				{
+					name: "-z or --zoom",
+					value: zoomText
+				},
+				{
+					name: "-t or --iterations",
+					value: iterationsText
+				},
+				{
+					name: "-d or --dist",
+					value: distText
+				},
+				{
+					name: "-w or --width",
+					value: widthText
+				},
+				{
+					name: "-h or --height",
+					value: heightText
+				},
+				{
+					name: "Extra Constraints",
+					value: constraintsText
+				}
+			],
+			thumbnail: {
+				url: myAvatar
+			},
+			footer: {
+				text: "m!mandelbrot -?",
+				icon_url: myAvatar
+			}
+		};
+		return Actions.message("", [], embed, Generate.addReactions(true));
 	}
 
 	static repMsg(opt) {
@@ -227,6 +369,14 @@ class Mandelbrot {
 
 	static unkMsg(opt) {
 		return Actions.message(`Error (mandelbrot): unknown option ${opt}`);
+	}
+
+	static sizMsg(size) {
+		return Actions.message(`Error (mandelbrot): image has ${size} pixels; it should have at most ${this.MAX_SIZE}`);
+	}
+
+	static cstMsg(cost) {
+		return Actions.message(`Error (mandelbrot): image has a cost of ${cost}; cost should be at most ${this.MAX_COST}`);
 	}
 }
 
